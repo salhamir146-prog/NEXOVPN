@@ -33,7 +33,6 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # ارتقای جدول کاربران با قابلیت رفرال، هدیه روزانه و لول VIP
     cursor.execute('''CREATE TABLE IF NOT EXISTS users (
         user_id INTEGER PRIMARY KEY,
         balance INTEGER DEFAULT 0,
@@ -88,7 +87,7 @@ def is_admin(user_id):
     conn.close()
     return admin is not None
 
-# --- 👑 ساخت کیبورد شیشه‌ای (Inline) کل کل قابلیت‌ها ---
+# --- ساخت کیبورد شیشه‌ای (Inline) اصلی ---
 def get_main_inline_keyboard(user_id):
     markup = types.InlineKeyboardMarkup(row_width=2)
     
@@ -96,7 +95,6 @@ def get_main_inline_keyboard(user_id):
     backend_url = get_setting('backend_url')
     full_webapp_url = f"{github_url}?user_id={user_id}&backend={backend_url}"
     
-    # دکمه‌های ردیف اول تا آخر (کاملاً شیشه‌ای)
     markup.add(types.InlineKeyboardButton('📱 ورود به مینی‌اپ گرافیکی فروشگاه', web_app=types.WebAppInfo(url=full_webapp_url)))
     markup.add(types.InlineKeyboardButton('🛍️ خرید اشتراک', callback_data='btn_buy'), types.InlineKeyboardButton('📋 حساب کاربری من', callback_data='btn_account'))
     markup.add(types.InlineKeyboardButton('🎁 هدیه روزانه شانس', callback_data='btn_daily'), types.InlineKeyboardButton('👥 کسب درآمد (زیرمجموعه)', callback_data='btn_referral'))
@@ -108,7 +106,6 @@ def get_main_inline_keyboard(user_id):
         markup.add(types.InlineKeyboardButton('⚙️ پنل مدیریت هوشمند ربات', callback_data='btn_admin_panel'))
     return markup
 
-# منوی کیبورد اصلی مدیریت (چون مدیریت راحتی کار با دکمه معمولی رو می‌خواد)
 def get_admin_keyboard(user_id):
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     markup.add('📥 سفارش‌ها تحویل دستی', '💳 رسید‌های در انتظار تایید')
@@ -119,7 +116,7 @@ def get_admin_keyboard(user_id):
     markup.add('🔙 بازگشت به منوی اصلی شیشه‌ای')
     return markup
 
-# --- هندلرهای دستورات ---
+# --- هندلرهای دستورات متنی ---
 @bot.message_handler(commands=['start'])
 def start_command(message):
     user_id = message.from_user.id
@@ -130,13 +127,11 @@ def start_command(message):
     
     if not user_exists:
         referred_by = 0
-        # بررسی سیستم رفرال هوشمند
         if len(text_args) > 1 and text_args[1].startswith('ref_'):
             try:
                 ref_id = int(text_args[1].replace('ref_', ''))
                 if ref_id != user_id:
                     referred_by = ref_id
-                    # هدیه به معرف
                     conn.execute("UPDATE users SET balance = balance + 2000, invite_count = invite_count + 1 WHERE user_id = ?", (ref_id,))
                     try:
                         bot.send_message(ref_id, f"🎉 یک کاربر از طریق لینک شما وارد شد! مبلغ ۲,۰۰۰ تومان به کیف پول شما هدیه داده شد.")
@@ -155,22 +150,27 @@ def back_to_main_text(message):
     welcome = get_setting('welcome_text')
     bot.send_message(message.from_user.id, welcome, reply_markup=get_main_inline_keyboard(message.from_user.id))
 
-# --- سیستم پاسخگویی به دکمه‌های شیشه‌ای کاربران ---
-@bot.callback_query_handler(func=lambda call: call.data.startswith('btn_'))
-def handle_user_inline_buttons(call):
+# --- 🎯 مرکز مدیریت یکپارچه تمام دکمه‌های شیشه‌ای (حل مشکل دکمه بازگشت) ---
+@bot.callback_query_handler(func=lambda call: True)
+def handle_all_callbacks(call):
     user_id = call.from_user.id
     data = call.data
     conn = get_db_connection()
     
-    if data == 'btn_account':
+    # دکمه بازگشت به خانه (اصلاح شده)
+    if data == 'back_to_home':
+        welcome = get_setting('welcome_text')
+        bot.edit_message_text(welcome, user_id, call.message.message_id, reply_markup=get_main_inline_keyboard(user_id))
+        
+    elif data == 'btn_account':
         u = conn.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
         text = (
-            f"📋 **پروفایل کاربری کاربری شما**\n\n"
+            f"📋 **پروفایل کاربری شما**\n\n"
             f"🆔 آیدی عددی: `{user_id}`\n"
-            f"💰 موجودی کیف پول: {u['balance']:,} تومان\n"
+            f"💰 موجودی کیف پول: {u['balance']}:, تومان\n"
             f"🎖️ سطح اکانت: {u['user_level']}\n"
             f"👥 تعداد زیرمجموعه‌ها: {u['invite_count']} نفر\n"
-            f"📊 کل خرید شما تا کنون: {u['total_spent']:,} تومان\n"
+            f"📊 کل خرید شما تا کنون: {u['total_spent']}:, تومان\n"
             f"🟢 وضعیت حساب: فعال و ایمن"
         )
         markup = types.InlineKeyboardMarkup()
@@ -182,7 +182,7 @@ def handle_user_inline_buttons(call):
         markup = types.InlineKeyboardMarkup(row_width=1)
         for p in plans:
             markup.add(types.InlineKeyboardButton(f"🚀 {p['name']} | {p['volume']}G | {p['days']} روز -> {p['price']:,} ت", callback_data=f"buy_p_{p['id']}"))
-        markup.add(types.InlineKeyboardButton("💰 شارژ حساب", callback_data="wallet_charge"), types.InlineKeyboardButton("🔙 بازگشت به منوی اصلی", callback_data="back_to_home"))
+        markup.add(types.InlineKeyboardButton("💰 شارژ حساب", callback_data="wallet_charge"), types.InlineKeyboardButton("🔙 بازگشت", callback_data="back_to_home"))
         bot.edit_message_text("🛒 لیست پلن‌های پرسرعت اختصاصی NEXOVPN:\nیکی از گزینه‌های زیر را جهت خرید انتخاب کنید:", user_id, call.message.message_id, reply_markup=markup)
 
     elif data == 'btn_referral':
@@ -204,21 +204,20 @@ def handle_user_inline_buttons(call):
         today_str = datetime.now().strftime("%Y-%m-%d")
         
         if u['last_daily'] == today_str:
-            bot.answer_callback_query(call.id, "❌ رفیق! شما هدیه امروزت رو گرفتی. فردا دوباره شانس خودت رو امتحان کن!", show_alert=True)
+            bot.answer_callback_query(call.id, "❌ رفیق! شما هدیه امروزت رو گرفتی. فردا دوباره بیا!", show_alert=True)
         else:
             gift_amount = random.choice([500, 1000, 1500, 2000, 3000])
             conn.execute("UPDATE users SET balance = balance + ?, last_daily = ? WHERE user_id = ?", (gift_amount, today_str, user_id))
             conn.commit()
-            bot.answer_callback_query(call.id, f"🎉 تبریک! گردونه چرخید و مبلغ {gift_amount:,} تومان به صورت رایگان به کیف پول شما اضافه شد!", show_alert=True)
+            bot.answer_callback_query(call.id, f"🎉 مبلغ {gift_amount:,} تومان شانس شما بود و به ولتت اضافه شد!", show_alert=True)
 
     elif data == 'btn_test_config':
-        # ایجاد خودکار کانفیگ فیک هوشمند برای تست کاربر
         test_config = f"vless://{random.randint(10000,99999)}a-test-nexovpn-free-account-for-{user_id}@de.nexovpn.com:443?type=ws&security=tls#TEST-NEXOVPN"
         text = (
             f"⏱️ **اکانت تست رایگان شما صادر شد!**\n\n"
-            f"📌 این کانفیگ دارای ۵۰۰ مگابایت حجم و اعتبار ۱ ساعته جهت تست کیفیت سرورها می‌باشد:\n\n"
+            f"📌 این کانفیگ دارای ۵۰۰ مگابایت حجم و اعتبار ۱ ساعته می‌باشد:\n\n"
             f"`{test_config}`\n\n"
-            f"⚠️ جهت خرید اکانت‌های پرسرعت بدون قطعی، از دکمه «خرید اشتراک» استفاده کنید."
+            f"⚠️ جهت خرید اکانت‌های اصلی، از دکمه «خرید اشتراک» استفاده کنید."
         )
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("🔙 بازگشت", callback_data="back_to_home"))
@@ -227,10 +226,10 @@ def handle_user_inline_buttons(call):
     elif data == 'btn_tutorials':
         text = (
             f"📚 **راهنمای جامع اتصال به NEXOVPN**\n\n"
-            f"🤖 **اندروید:** نرم‌افزار v2rayNG را دانلود کرده و کانفیگ را کپی و وارد برنامه کنید.\n"
-            f"🍏 **آیفون (iOS):** از برنامه‌های v2box یا FoXray یا Shadowrocket استفاده کنید.\n"
-            f"💻 **ویندوز:** شبیه‌ساز v2rayN یا nekoray را نصب کنید.\n\n"
-            f"لینک دانلود برنامه‌ها به زودی در این بخش قرار می‌گیرد."
+            f"🤖 **اندروید:** نرم‌افزار v2rayNG را دانلود کنید.\n"
+            f"🍏 **آیفون (iOS):** از برنامه v2box یا FoXray استفاده کنید.\n"
+            f"💻 **ویندوز:** برنامه v2rayN را نصب کنید.\n\n"
+            f"کافیه کانفیگ خودتون رو کپی کنید و داخل این برنامه‌ها Import کنید."
         )
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("🔙 بازگشت", callback_data="back_to_home"))
@@ -252,7 +251,7 @@ def handle_user_inline_buttons(call):
     elif data == 'btn_history':
         txs = conn.execute("SELECT * FROM transactions WHERE user_id = ? ORDER BY id DESC LIMIT 5", (user_id,)).fetchall()
         if not txs:
-            text = "📜 شما هنوز هیچ تراکنش یا فاکتور خریدی در این ربات ثبت نکرده‌اید!"
+            text = "📜 شما هنوز هیچ تراکنشی در این ربات ثبت نکرده‌اید!"
         else:
             text = "📜 **لیست آخرین تراکنش‌های شما:**\n\n"
             for t in txs:
@@ -279,26 +278,15 @@ def handle_user_inline_buttons(call):
     elif data == 'btn_admin_panel' and is_admin(user_id):
         bot.send_message(user_id, "🛠️ پنل مدیریت با دکمه‌های پایینی فعال شد:", reply_markup=get_admin_keyboard(user_id))
 
-    elif data == 'back_to_home':
-        welcome = get_setting('welcome_text')
-        bot.edit_message_text(welcome, user_id, call.message.message_id, reply_markup=get_main_inline_keyboard(user_id))
-
-    conn.close()
-
-# --- ادامه منطق کالبک‌های پایه سیستم ---
-@bot.callback_query_handler(func=lambda call: not call.data.startswith('btn_'))
-def handle_core_callbacks(call):
-    user_id = call.from_user.id
-    conn = get_db_connection()
-    
-    if call.data == "wallet_charge":
+    # --- کالبک‌های سیستمی و مالی کدهای قبلی ---
+    elif data == "wallet_charge":
         card = get_setting('card_number')
         text = f"💳 جهت شارژ حساب، مبلغ مورد نظر را به شماره کارت زیر واریز کنید:\n\n`{card}`\n\n📌 بعد از واریز، عکس رسید را بفرستید."
         msg = bot.send_message(user_id, text, parse_mode="Markdown")
         bot.register_next_step_handler(msg, process_payment_receipt)
         
-    elif call.data.startswith("buy_p_"):
-        plan_id = int(call.data.replace("buy_p_", ""))
+    elif data.startswith("buy_p_"):
+        plan_id = int(data.replace("buy_p_", ""))
         plan = conn.execute("SELECT * FROM plans WHERE id = ?", (plan_id,)).fetchone()
         user = conn.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
         
@@ -307,7 +295,6 @@ def handle_core_callbacks(call):
                 new_balance = user['balance'] - plan['price']
                 new_spent = user['total_spent'] + plan['price']
                 
-                # لول‌بندی اتوماتیک بر اساس سقف خرید
                 lvl = "🥉 برنزی"
                 if new_spent > 500000: lvl = "👑 طلایی"
                 elif new_spent > 150000: lvl = "🥈 نقره‌ای"
@@ -318,8 +305,8 @@ def handle_core_callbacks(call):
             else:
                 bot.answer_callback_query(call.id, "❌ موجودی کافی نیست! ابتدا حساب را شارژ کنید.", show_alert=True)
                 
-    elif call.data.startswith("trx_approve_"):
-        trx_id = int(call.data.replace("trx_approve_", ""))
+    elif data.startswith("trx_approve_"):
+        trx_id = int(data.replace("trx_approve_", ""))
         trx = conn.execute("SELECT * FROM transactions WHERE id = ?", (trx_id,)).fetchone()
         if trx and trx['status'] == 'PENDING':
             conn.execute("UPDATE transactions SET status = 'APPROVED' WHERE id = ?", (trx_id,))
@@ -328,8 +315,8 @@ def handle_core_callbacks(call):
             bot.edit_message_caption("✅ این رسید تایید و حساب کاربر شارژ شد.", call.from_user.id, call.message.message_id)
             bot.send_message(trx['user_id'], f"🎉 رسید واریزی شما تایید شد!\n💰 مبلغ {trx['amount']:,} تومان به کیف پول شما اضافه شد.")
             
-    elif call.data.startswith("trx_reject_"):
-        trx_id = int(call.data.replace("trx_reject_", ""))
+    elif data.startswith("trx_reject_"):
+        trx_id = int(data.replace("trx_reject_", ""))
         trx = conn.execute("SELECT * FROM transactions WHERE id = ?", (trx_id,)).fetchone()
         if trx and trx['status'] == 'PENDING':
             conn.execute("UPDATE transactions SET status = 'REJECTED' WHERE id = ?", (trx_id,))
@@ -359,7 +346,7 @@ def save_receipt_db(message, photo_id):
     except ValueError:
         bot.send_message(message.from_user.id, "❌ خطا در مقدار!")
 
-# --- منوی مدیریت و شخصی‌سازی متون و رنگ دکمه‌ها ---
+# --- منوی مدیریت و تنظیمات پویا ---
 @bot.message_handler(func=lambda m: m.text == '🎨 تنظیمات ظاهری و متون' and is_admin(m.from_user.id))
 def admin_customization_menu(message):
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
