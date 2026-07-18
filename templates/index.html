@@ -1,1 +1,246 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXOVPN PRO SHOP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;700;900&display=swap');
+        body { font-family: 'Vazirmatn', sans-serif; background-color: #0b0f19; color: #f1f5f9; -webkit-tap-highlight-color: transparent; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .nav-btn.active { color: #3b82f6; border-top: 2px solid #3b82f6; }
+    </style>
+</head>
+<body class="p-4 pb-24 select-none">
+
+    <!-- هدر ثابت فوق حرفه‌ای -->
+    <div class="flex items-center justify-between bg-slate-900/80 p-4 rounded-2xl border border-slate-800/80 mb-4 shadow-xl backdrop-blur-lg">
+        <div class="flex items-center gap-3">
+            <div id="shop-avatar" class="w-11 h-11 rounded-xl flex items-center justify-center text-lg font-black text-white shadow-md bg-blue-600">N</div>
+            <div>
+                <h1 id="shop-name" class="font-black text-md text-slate-100">NEXOVPN SHOP</h1>
+                <p class="text-[10px] text-emerald-400 flex items-center gap-1">🟢 سیستم تحویل آنی فعال است</p>
+            </div>
+        </div>
+        <div class="bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700/50 text-center">
+            <p class="text-[9px] text-slate-400">موجودی شما</p>
+            <p class="text-xs font-bold text-blue-400"><span id="user-balance">0</span> <span class="text-[9px] text-slate-400">تومان</span></p>
+        </div>
+    </div>
+
+    <!-- ================= 🏢 تب ۱: فروشگاه ================= -->
+    <div id="tab-store" class="tab-content active space-y-4">
+        <div class="bg-gradient-to-r from-blue-600/20 to-purple-600/20 p-4 rounded-2xl border border-blue-500/30 shadow-md">
+            <h3 class="text-sm font-bold text-slate-200">🚀 اشتراک‌های پرسرعت نسل جدید (Vless/Reality)</h3>
+            <p class="text-[11px] text-slate-400 mt-1">بدون قطعی، متناسب با اپراتورهای همراه اول، ایرانسل و مخابرات.</p>
+        </div>
+        <div id="plans-container" class="space-y-3">
+            <div class="p-4 text-center text-sm text-slate-500">در حال دریافت لیست پلن‌ها...</div>
+        </div>
+    </div>
+
+    <!-- ================= 💳 تب ۲: کیف پول ================= -->
+    <div id="tab-wallet" class="tab-content space-y-4">
+        <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 space-y-4 shadow-xl">
+            <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">💳 شارژ مستقیم و کارت به کارت</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">مبلغ مورد نظر خود را به شماره کارت زیر واریز کنید و سپس اطلاعات پرداخت را در فرم زیر ثبت کنید تا حساب شما فوراً شارژ شود.</p>
+            
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 flex justify-between items-center">
+                <div>
+                    <p class="text-[10px] text-slate-500">شماره کارت فروشگاه:</p>
+                    <p id="card-number" class="text-sm font-black text-slate-200 tracking-widest mt-1">در حال دریافت...</p>
+                </div>
+                <button onclick="copyCard()" class="bg-slate-800 hover:bg-slate-700 text-[11px] px-3 py-1.5 rounded-lg text-slate-300 font-bold border border-slate-700">کپی کارت</button>
+            </div>
+
+            <div class="space-y-3 pt-2">
+                <div>
+                    <label class="text-xs text-slate-400 block mb-1">مبلغ واریزی (تومان):</label>
+                    <input type="number" id="charge-amount" placeholder="مثلا 50000" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm font-bold text-slate-100 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400 block mb-1">کد پیگیری یا نام واریزکننده:</label>
+                    <input type="text" id="charge-ref" placeholder="کد پیگیری ۴ یا ۶ رقمی" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+                </div>
+                <button onclick="submitDeposit()" class="w-full bg-blue-600 hover:bg-blue-500 font-bold py-3 rounded-xl text-sm transition-all shadow-lg shadow-blue-600/20">ثبت و ارسال اطلاعات پرداخت</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 📦 تب ۳: سفارشات من ================= -->
+    <div id="tab-orders" class="tab-content space-y-4">
+        <h3 class="text-sm font-bold text-slate-300 px-1">📦 تاریخچه خریدها و کانفیگ‌های شما:</h3>
+        <div id="orders-container" class="space-y-3">
+            <div class="p-4 text-center text-sm text-slate-500">در حال لود لیست سفارشات...</div>
+        </div>
+    </div>
+
+    <!-- ================= 📈 تب ۴: درباره ما ================= -->
+    <div id="tab-about" class="tab-content space-y-4">
+        <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 space-y-4 shadow-xl">
+            <h3 class="text-md font-black text-blue-400">🛡️ چرا خدمات NEXOVPN؟</h3>
+            <p class="text-xs text-slate-400 leading-relaxed">تیم فنی ما با بیش از ۳ سال تجربه مستمر در حوزه شبکه‌های امن و دور زدن فیلترینگ، پایدارترین کانفیگ‌های اختصاصی را روی قوی‌ترین دیتا‌سنترهای اروپایی فراهم آورده است.</p>
+            
+            <div class="grid grid-cols-2 gap-3 pt-2">
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/60 text-center">
+                    <p class="text-lg font-black text-emerald-400">۹۹.۹٪</p>
+                    <p class="text-[10px] text-slate-500 mt-1">آپتایم و پایداری سرورها</p>
+                </div>
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/60 text-center">
+                    <p class="text-lg font-black text-purple-400">+۵,۰۰۰</p>
+                    <p class="text-[10px] text-slate-500 mt-1">کاربر فعال و رضایتمند</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 📱 نوار ناوبری ثابت پایینی ================= -->
+    <div class="fixed bottom-0 left-0 right-0 bg-slate-900/95 border-t border-slate-800 px-4 py-2 flex justify-around items-center shadow-2xl backdrop-blur-xl z-50">
+        <button onclick="switchTab('store')" id="nav-store" class="nav-btn active flex flex-col items-center gap-1 text-slate-400 py-1 text-[11px] font-bold flex-1">🛒 <span>فروشگاه</span></button>
+        <button onclick="switchTab('wallet')" id="nav-wallet" class="nav-btn flex flex-col items-center gap-1 text-slate-400 py-1 text-[11px] font-bold flex-1">💳 <span>شارژ حساب</span></button>
+        <button onclick="switchTab('orders')" id="nav-orders" class="nav-btn flex flex-col items-center gap-1 text-slate-400 py-1 text-[11px] font-bold flex-1">📦 <span>سفارشات من</span></button>
+        <button onclick="switchTab('about')" id="nav-about" class="nav-btn flex flex-col items-center gap-1 text-slate-400 py-1 text-[11px] font-bold flex-1">📈 <span>درباره ما</span></button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        
+        const user = tg.initDataUnsafe?.user;
+        const userId = user ? user.id : 8911508795;
+        const API_BASE = window.location.origin;
+        let globalThemeColor = '#3b82f6';
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            document.getElementById(`nav-${tabName}`).classList.add('active');
+            
+            if(tabName === 'orders') loadUserOrders();
+        }
+
+        async function loadShopData() {
+            try {
+                const configRes = await fetch(`${API_BASE}/api/shop_config?user_id=${userId}`);
+                const config = await configRes.json();
+                
+                document.getElementById('shop-name').innerText = config.shop_name;
+                document.getElementById('user-balance').innerText = Number(config.balance).toLocaleString();
+                document.getElementById('card-number').innerText = config.card_number;
+                
+                globalThemeColor = config.theme_color || '#3b82f6';
+                document.getElementById('shop-avatar').style.backgroundColor = globalThemeColor;
+
+                const plansRes = await fetch(`${API_BASE}/api/get_plans`);
+                const plans = await plansRes.json();
+                
+                const container = document.getElementById('plans-container');
+                container.innerHTML = '';
+
+                plans.forEach(plan => {
+                    if(plan.is_wholesale === 1) return;
+                    const card = document.createElement('div');
+                    card.className = "p-4 bg-slate-900/60 rounded-xl border border-slate-800/80 flex justify-between items-center shadow-md";
+                    card.innerHTML = `
+                        <div>
+                            <h3 class="font-bold text-slate-200 text-sm">${plan.name}</h3>
+                            <p class="text-[11px] text-slate-400 mt-1">📊 حجم: ${plan.volume}G | ⏱️ اعتبار: ${plan.days} روز</p>
+                        </div>
+                        <button onclick="buyPlanDirect(${plan.id}, '${plan.name}', ${plan.price})" class="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all" style="background-color: ${globalThemeColor}">
+                            ${Number(plan.price).toLocaleString()} ت
+                        </button>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        function buyPlanDirect(planId, name, price) {
+            tg.showPopup({
+                title: 'تایید نهایی خرید',
+                message: `آیا از خرید اشتراک ${name} به مبلغ ${price.toLocaleString()} تومان مطمئن هستید؟ هزینه از کیف پول شما کسر خواهد شد.`,
+                buttons: [{id: 'ok', type: 'default', text: '💳 تایید و پرداخت آنی'}, {type: 'cancel', text: 'انصراف'}]
+            }, async function(btnId) {
+                if(btnId === 'ok') {
+                    const res = await fetch(`${API_BASE}/api/buy_plan_direct`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({user_id: userId, plan_id: planId})
+                    });
+                    const result = await res.json();
+                    if(result.success) {
+                        tg.showAlert("🎉 خرید با موفقیت انجام شد! وضعیت آن در تب «سفارشات من» قابل پیگیری است.");
+                        loadShopData();
+                    } else {
+                        tg.showAlert("❌ خطا: " + result.message);
+                    }
+                }
+            });
+        }
+
+        async function submitDeposit() {
+            const amount = document.getElementById('charge-amount').value;
+            const ref = document.getElementById('charge-ref').value;
+            if(!amount || !ref) { tg.showAlert("❌ لطفاً تمام فیلدها را پر کنید!"); return; }
+
+            const res = await fetch(`${API_BASE}/api/submit_payment_direct`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({user_id: userId, amount: parseInt(amount), ref_code: ref})
+            });
+            const result = await res.json();
+            if(result.success) {
+                tg.showAlert("✅ اطلاعات پرداخت ثبت شد! پس از تایید مدیریت، حساب شارژ می‌شود.");
+                document.getElementById('charge-amount').value = '';
+                document.getElementById('charge-ref').value = '';
+            } else { tg.showAlert("❌ مشکلی پیش آمد."); }
+        }
+
+        async function loadUserOrders() {
+            const container = document.getElementById('orders-container');
+            container.innerHTML = '<div class="p-4 text-center text-xs text-slate-500">در حال لود...</div>';
+            try {
+                const res = await fetch(`${API_BASE}/api/get_user_orders?user_id=${userId}`);
+                const data = await res.json();
+                container.innerHTML = '';
+                if(data.length === 0) {
+                    container.innerHTML = '<div class="p-4 text-center text-xs text-slate-500">شما هنوز هیچ سفارشی ثبت نکرده‌اید.</div>';
+                    return;
+                }
+                data.forEach(ord => {
+                    const card = document.createElement('div');
+                    card.className = "p-4 bg-slate-900/60 rounded-xl border border-slate-800/80 space-y-3 shadow-sm";
+                    let statusBadge = `<span class="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded text-[10px] font-bold">⏳ در انتظار تحویل</span>`;
+                    if(ord.status === 'COMPLETED') statusBadge = `<span class="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold">✅ تحویل داده شده</span>`;
+                    if(ord.status === 'CANCELLED') statusBadge = `<span class="bg-red-500/20 text-red-400 px-2 py-0.5 rounded text-[10px] font-bold">❌ لغو شده</span>`;
+                    
+                    let configArea = '';
+                    if(ord.status === 'COMPLETED' && ord.config_link) {
+                        configArea = `
+                            <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 flex justify-between items-center mt-2">
+                                <code class="text-[10px] text-blue-400 block truncate max-w-[200px] font-mono">${ord.config_link}</code>
+                                <button onclick="navigator.clipboard.writeText('${ord.config_link}'); alert('کانفیگ کپی شد!');" class="bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded">کپی</button>
+                            </div>`;
+                    }
+                    card.innerHTML = `<div class="flex justify-between items-center"><span class="font-bold text-slate-200 text-xs">${ord.plan_name}</span>${statusBadge}</div><p class="text-[10px] text-slate-500">کد سفارش: ${ord.id} | تاریخ: ${ord.date}</p>${configArea}`;
+                    container.appendChild(card);
+                });
+            } catch(e) { container.innerHTML = 'خطا در لود اطلاعات'; }
+        }
+
+        function copyCard() {
+            const card = document.getElementById('card-number').innerText;
+            navigator.clipboard.writeText(card);
+            tg.showAlert("📋 شماره کارت با موفقیت کپی شد!");
+        }
+
+        loadShopData();
+    </script>
+</body>
+</html>
 
