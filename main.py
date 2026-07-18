@@ -9,8 +9,9 @@ import telebot
 from telebot import types
 
 # 🔒 تنظیمات مالک اصلی و توکن ربات
-BOT_TOKEN = "8853723250:AAE2rpaXn5Ao5lqdTyqs5NB_8WAIZc4eWZQ"
+BOT_TOKEN = "8956203339:AAFQqaanC1TShzJh7l_22gCNTM00vqF_Kks"
 OWNER_ID = 8911508795
+
 
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
