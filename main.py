@@ -73,8 +73,8 @@ def init_db():
         ('shop_name', 'NEXOVPN'),
         ('card_number', '۶۰۳۷۹۹۷۹۰۰۰۰۰۰۰۰'),
         ('support_id', 'NEXOVPN_Admin'),
-        ('theme_color', '#3b82f6'), # رنگ آبی پیش‌فرض دکمه‌های مینی‌اپ
-        ('backend_url', 'https://your-render-app.onrender.com'), # آدرس رندر پس از ساخت
+        ('theme_color', '#3b82f6'), 
+        ('backend_url', 'https://nexovpn.onrender.com'), 
         ('welcome_text', "✨ به Test خوش آمدید\n\n📣 اطلاعیه خرید\n\n• پرداخت‌ها به‌صورت خودکار تأیید می‌شوند و تحویل اشتراک به‌صورت آنی انجام می‌شود.🙏 از همراهی شما با NEXOVPN سپاسگزاریم.\n\nاز طریق منوی زیر می‌توانید:\n🛍️ اشتراک مناسب خود را انتخاب فرمایید\n📋 وضعیت حساب کاربری خود را مشاهده فرمایید\n\n📱 در صورت تمایل، می‌توانید از دکمه مینی‌اپ هم وارد نسخه گرافیکی فروشگاه شوید.\n⚙️ در صورت نیاز، به بخش مدیریت وارد شوید")
     ]
     for k, v in default_settings:
@@ -114,7 +114,7 @@ def backup_database():
     except Exception as e:
         print(f"Backup Error: {e}")
 
-# --- API‌های مخصوص مینی‌اپ گرافیکی (پویاسازی کامل) ---
+# --- API‌های مخصوص مینی‌اپ گرافیکی ---
 @app.route('/api/shop_config')
 def get_shop_config():
     user_id = request.args.get('user_id', type=int)
@@ -140,7 +140,6 @@ def get_plans():
 def get_main_keyboard(user_id):
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     
-    # ساخت لینک وب‌اپ پویا همراه با ارسال پارامترها برای ست شدن رنگ و اطلاعات
     github_url = "https://salhamir146-prog.github.io/index.html/"
     backend_url = get_setting('backend_url')
     full_webapp_url = f"{github_url}?user_id={user_id}&backend={backend_url}"
@@ -172,7 +171,7 @@ def get_admin_keyboard(user_id):
         types.KeyboardButton('🎟️ ساخت کد تخفیف'),
         types.KeyboardButton('📢 پیام همگانی (برودکست)'),
         types.KeyboardButton('➕ اضافه کردن پنل وی‌پی‌آن'),
-        types.KeyboardButton('🎨 تنظیمات ظاهری و متون') # دکمه شخصی‌سازی درخواستی
+        types.KeyboardButton('🎨 تنظیمات ظاهری و متون')
     ]
     markup.add(*btns)
     if user_id == OWNER_ID:
@@ -189,7 +188,7 @@ def start_command(message):
     conn.commit()
     conn.close()
     
-    welcome = get_setting('welcome_text').replace('\n', '\n')
+    welcome = get_setting('welcome_text')
     bot.send_message(user_id, welcome, reply_markup=get_main_keyboard(user_id))
 
 @bot.message_handler(func=lambda m: m.text == '🛍️ خرید اشتراک')
@@ -257,7 +256,7 @@ def admin_panel(message):
 def back_to_main(message):
     bot.send_message(message.from_user.id, "🏠 به منوی اصلی برگشتید.", reply_markup=get_main_keyboard(message.from_user.id))
 
-# --- منوی جذاب شخصی‌سازی متون و رنگ دکمه‌ها ---
+# --- منوی شخصی‌سازی متون و رنگ دکمه‌ها ---
 @bot.message_handler(func=lambda m: m.text == '🎨 تنظیمات ظاهری و متون' and is_admin(m.from_user.id))
 def admin_customization_menu(message):
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
@@ -277,7 +276,7 @@ def edit_settings_handler(message):
         msg = bot.send_message(message.from_user.id, "💳 شماره کارت جدید ۱۶ رقمی را وارد کنید:", reply_markup=types.ReplyKeyboardRemove())
         bot.register_next_step_handler(msg, lambda m: save_generic_setting(m, 'card_number'))
     elif "آیدی پشتیبانی" in t:
-        msg = bot.send_message(message.from_user.id, "👤 آیدی یوزرنیم پشتیبانی را بدون @ وارد کنید:", reply_markup=types.ReplyKeyboardRemove())
+        msg = bot.send_message(message.from_user.id, "👤 آیدی پشتیبانی را بدون @ وارد کنید:", reply_markup=types.ReplyKeyboardRemove())
         bot.register_next_step_handler(msg, lambda m: save_generic_setting(m, 'support_id'))
     elif "متن خوش‌آمدگویی" in t:
         msg = bot.send_message(message.from_user.id, "📝 متن جدید استارت ربات را ارسال کنید:", reply_markup=types.ReplyKeyboardRemove())
@@ -292,16 +291,16 @@ def change_color_start(message):
         types.InlineKeyboardButton("🔴 قرمز یاقوتی", callback_data="set_clr_#ef4444"),
         types.InlineKeyboardButton("🟣 بنفش لوکس", callback_data="set_clr_#8b5cf6")
     )
-    bot.send_message(message.from_user.id, "🎨 یک رنگ جذاب برای دکمه‌ها و پوسته‌ی مینی‌اپ گرافیکی خود انتخاب کنید:", reply_markup=markup)
+    bot.send_message(message.from_user.id, "🎨 یک رنگ جذاب برای مینی‌اپ انتخاب کنید:", reply_markup=markup)
 
 @bot.message_handler(func=lambda m: m.text == '🌐 ست کردن لینک رندر' and is_admin(m.from_user.id))
 def change_backend_url_start(message):
-    msg = bot.send_message(message.from_user.id, "🌐 آدرس کامل وب‌سرویس رندر خود را وارد کنید (مثال: https://nexovpn.onrender.com):", reply_markup=types.ReplyKeyboardRemove())
+    msg = bot.send_message(message.from_user.id, "🌐 آدرس کامل وب‌سرویس رندر خود را وارد کنید:", reply_markup=types.ReplyKeyboardRemove())
     bot.register_next_step_handler(msg, lambda m: save_generic_setting(m, 'backend_url'))
 
 def save_generic_setting(message, key):
     set_setting(key, message.text)
-    bot.send_message(message.from_user.id, "✅ تغییرات با موفقیت در دیتابیس ثبت و روی ربات و مینی‌اپ اعمال شد!", reply_markup=get_admin_keyboard(message.from_user.id))
+    bot.send_message(message.from_user.id, "✅ تغییرات ثبت شد!", reply_markup=get_admin_keyboard(message.from_user.id))
     backup_database()
 
 # --- سیستم اضافه کردن پنل وی‌پی‌آن واقعی ---
@@ -317,17 +316,17 @@ def process_plan_type(message):
         bot.send_message(message.from_user.id, "عملیات لغو شد.", reply_markup=get_admin_keyboard(message.from_user.id))
         return
     is_wholesale = 1 if message.text == "💼 فروش عمده" else 0
-    msg = bot.send_message(message.from_user.id, "📝 نام پنل را وارد کنید (مثلاً: پلن طلایی المان):", reply_markup=types.ReplyKeyboardRemove())
+    msg = bot.send_message(message.from_user.id, "📝 نام پنل را وارد کنید:", reply_markup=types.ReplyKeyboardRemove())
     bot.register_next_step_handler(msg, process_plan_name, is_wholesale)
 
 def process_plan_name(message, is_wholesale):
     name = message.text
-    msg = bot.send_message(message.from_user.id, "📊 حجم پلن را به گیگابایت وارد کنید (مثال: 50 یا نامحدود):")
+    msg = bot.send_message(message.from_user.id, "📊 حجم پلن را به گیگابایت وارد کنید:")
     bot.register_next_step_handler(msg, process_plan_volume, is_wholesale, name)
 
 def process_plan_volume(message, is_wholesale, name):
     volume = message.text
-    msg = bot.send_message(message.from_user.id, "⏱️ مدت زمان اعتبار را به روز وارد کنید (مثال: 30):")
+    msg = bot.send_message(message.from_user.id, "⏱️ مدت زمان اعتبار را به روز وارد کنید:")
     bot.register_next_step_handler(msg, process_plan_days, is_wholesale, name, volume)
 
 def process_plan_days(message, is_wholesale, name, volume):
@@ -342,7 +341,7 @@ def process_plan_price(message, is_wholesale, name, volume, days):
         conn.execute("INSERT INTO plans (name, volume, days, price, is_wholesale) VALUES (?, ?, ?, ?, ?)", (name, volume, days, price, is_wholesale))
         conn.commit()
         conn.close()
-        bot.send_message(message.from_user.id, "✅ پلن جدید با موفقیت اضافه شد و از این لحظه در مینی‌اپ و ربات قابل خرید است!", reply_markup=get_admin_keyboard(message.from_user.id))
+        bot.send_message(message.from_user.id, "✅ پلن جدید با موفقیت اضافه شد!", reply_markup=get_admin_keyboard(message.from_user.id))
         backup_database()
     except ValueError:
         bot.send_message(message.from_user.id, "❌ خطا در قیمت! عملیات لغو شد.", reply_markup=get_admin_keyboard(message.from_user.id))
@@ -375,7 +374,7 @@ def handle_admin_features(message):
     elif t == '💳 رسید‌های در انتظار تایید':
         pending = conn.execute("SELECT * FROM transactions WHERE status = 'PENDING'").fetchall()
         if not pending:
-            bot.send_message(message.from_user.id, "🟢 هیچ رسید جدیدی در انتظار تایید نیست رفیق!")
+            bot.send_message(message.from_user.id, "🟢 هیچ رسید جدیدی در انتظار تایید نیست!")
         for trx in pending:
             markup = types.InlineKeyboardMarkup()
             markup.add(
@@ -393,7 +392,7 @@ def handle_admin_features(message):
         bot.send_message(message.from_user.id, f"👥 لیست آخرین کاربران فعال:\n\n{user_list}", parse_mode="Markdown")
     conn.close()
 
-# --- سیستم کالبک سورس (تراکنش ها و وب اپ) ---
+# --- سیستم کالبک سورس ---
 @bot.callback_query_handler(func=lambda call: True)
 def inline_clicks(call):
     user_id = call.from_user.id
@@ -402,7 +401,7 @@ def inline_clicks(call):
     if call.data.startswith("set_clr_"):
         color = call.data.replace("set_clr_", "")
         set_setting('theme_color', color)
-        bot.answer_callback_query(call.id, f"🎨 رنگ پوسته مینی‌اپ به {color} تغییر یافت!", show_alert=True)
+        bot.answer_callback_query(call.id, f"🎨 رنگ پوسته مینی‌اپ تغییر یافت!", show_alert=True)
         backup_database()
         
     elif call.data == "wallet_charge":
@@ -424,7 +423,7 @@ def inline_clicks(call):
                 bot.send_message(user_id, f"🎉 پرداخت با موفقیت انجام شد!\n🛍️ اشتراک {plan['name']} به صورت آنی صادر شد.\n💰 موجودی جدید شما: {new_balance:,} تومان")
                 backup_database()
             else:
-                bot.answer_callback_query(call.id, "❌ موجودی کافی نیست! ابتدا حساب خود را شارژ کنید.", show_alert=True)
+                bot.answer_callback_query(call.id, "❌ موجودی کافی نیست!", show_alert=True)
                 
     elif call.data.startswith("trx_approve_"):
         trx_id = int(call.data.replace("trx_approve_", ""))
@@ -473,10 +472,13 @@ def save_receipt_db(message, photo_id):
 def home():
     return "NEXOVPN Core Server is Live! 🚀"
 
-def run_flask():
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+# 🟢 انتقال استارت ربات به بیرون از بلاک اصلی جهت اجرای اجباری توسط Gunicorn
+def start_bot_polling():
+    print("NEXOVPN Bot Polling Started Successfully... 🚀")
+    bot.infinity_polling()
+
+threading.Thread(target=start_bot_polling, daemon=True).start()
 
 if __name__ == '__main__':
-    threading.Thread(target=run_flask, daemon=True).start()
-    bot.infinity_polling()
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
