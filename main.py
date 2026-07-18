@@ -50,6 +50,17 @@ def init_db():
     cursor.execute('''CREATE TABLE IF NOT EXISTS transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, amount INTEGER, status TEXT DEFAULT 'PENDING', photo_id TEXT, date TEXT
     )''')
+    
+    # 🆕 جدول سفارشات خرید کانفیگ دستی
+    cursor.execute('''CREATE TABLE IF NOT EXISTS orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        plan_name TEXT,
+        price INTEGER,
+        status TEXT DEFAULT 'PENDING',
+        date TEXT
+    )''')
+    
     cursor.execute('''CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)''')
     
     default_settings = [
@@ -87,10 +98,8 @@ def is_admin(user_id):
     conn.close()
     return admin is not None
 
-# --- ساخت کیبورد شیشه‌ای (Inline) اصلی ---
 def get_main_inline_keyboard(user_id):
     markup = types.InlineKeyboardMarkup(row_width=2)
-    
     github_url = "https://salhamir146-prog.github.io/index.html/"
     backend_url = get_setting('backend_url')
     full_webapp_url = f"{github_url}?user_id={user_id}&backend={backend_url}"
@@ -116,7 +125,6 @@ def get_admin_keyboard(user_id):
     markup.add('🔙 بازگشت به منوی اصلی شیشه‌ای')
     return markup
 
-# --- هندلرهای دستورات متنی ---
 @bot.message_handler(commands=['start'])
 def start_command(message):
     user_id = message.from_user.id
@@ -150,14 +158,13 @@ def back_to_main_text(message):
     welcome = get_setting('welcome_text')
     bot.send_message(message.from_user.id, welcome, reply_markup=get_main_inline_keyboard(message.from_user.id))
 
-# --- 🎯 مرکز مدیریت یکپارچه تمام دکمه‌های شیشه‌ای (حل مشکل دکمه بازگشت) ---
+# --- 🎯 مرکز مدیریت یکپارچه دکمه‌های شیشه‌ای ---
 @bot.callback_query_handler(func=lambda call: True)
 def handle_all_callbacks(call):
     user_id = call.from_user.id
     data = call.data
     conn = get_db_connection()
     
-    # دکمه بازگشت به خانه (اصلاح شده)
     if data == 'back_to_home':
         welcome = get_setting('welcome_text')
         bot.edit_message_text(welcome, user_id, call.message.message_id, reply_markup=get_main_inline_keyboard(user_id))
@@ -167,10 +174,10 @@ def handle_all_callbacks(call):
         text = (
             f"📋 **پروفایل کاربری شما**\n\n"
             f"🆔 آیدی عددی: `{user_id}`\n"
-            f"💰 موجودی کیف پول: {u['balance']}:, تومان\n"
+            f"💰 موجودی کیف پول: {u['balance']:,} تومان\n"
             f"🎖️ سطح اکانت: {u['user_level']}\n"
             f"👥 تعداد زیرمجموعه‌ها: {u['invite_count']} نفر\n"
-            f"📊 کل خرید شما تا کنون: {u['total_spent']}:, تومان\n"
+            f"📊 کل خرید شما تا کنون: {u['total_spent']:,} تومان\n"
             f"🟢 وضعیت حساب: فعال و ایمن"
         )
         markup = types.InlineKeyboardMarkup()
@@ -202,7 +209,6 @@ def handle_all_callbacks(call):
     elif data == 'btn_daily':
         u = conn.execute("SELECT last_daily FROM users WHERE user_id = ?", (user_id,)).fetchone()
         today_str = datetime.now().strftime("%Y-%m-%d")
-        
         if u['last_daily'] == today_str:
             bot.answer_callback_query(call.id, "❌ رفیق! شما هدیه امروزت رو گرفتی. فردا دوباره بیا!", show_alert=True)
         else:
@@ -240,7 +246,7 @@ def handle_all_callbacks(call):
         text = (
             f"📊 **وضعیت پینگ و ظرفیت زنده سرورها**\n\n"
             f"🇩🇪 سرور آلمان (VIP): 🟢 آنلاین | پینگ: {p1}ms | ظرفیت: ۲۴%\n"
-            f"🇫🇮 سرور فنلاند (سرعت بالا): 🟢 آنلاین | پینگ: {p2}ms | ظرفیت: ۳۸%\n"
+            f"🇫Icons سرور فنلاند (سرعت بالا): 🟢 آنلاین | پینگ: {p2}ms | ظرفیت: ۳۸%\n"
             f"🇳🇱 سرور هلند (مخصوص دانلود): 🟢 آنلاین | پینگ: {p3}ms | ظرفیت: ۵۱%\n\n"
             f"🔄 آمار هر ۳۰ ثانیه به‌روزرسانی می‌شود."
         )
@@ -278,13 +284,13 @@ def handle_all_callbacks(call):
     elif data == 'btn_admin_panel' and is_admin(user_id):
         bot.send_message(user_id, "🛠️ پنل مدیریت با دکمه‌های پایینی فعال شد:", reply_markup=get_admin_keyboard(user_id))
 
-    # --- کالبک‌های سیستمی و مالی کدهای قبلی ---
     elif data == "wallet_charge":
         card = get_setting('card_number')
         text = f"💳 جهت شارژ حساب، مبلغ مورد نظر را به شماره کارت زیر واریز کنید:\n\n`{card}`\n\n📌 بعد از واریز، عکس رسید را بفرستید."
         msg = bot.send_message(user_id, text, parse_mode="Markdown")
         bot.register_next_step_handler(msg, process_payment_receipt)
         
+    # 🛒 اصلاح دکمه خرید برای ثبت دستی در صف ادمین
     elif data.startswith("buy_p_"):
         plan_id = int(data.replace("buy_p_", ""))
         plan = conn.execute("SELECT * FROM plans WHERE id = ?", (plan_id,)).fetchone()
@@ -299,9 +305,23 @@ def handle_all_callbacks(call):
                 if new_spent > 500000: lvl = "👑 طلایی"
                 elif new_spent > 150000: lvl = "🥈 نقره‌ای"
                 
+                today_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+                
+                # ۱. ثبت سفارش در دیتابیس
+                conn.execute("INSERT INTO orders (user_id, plan_name, price, status, date) VALUES (?, ?, ?, 'PENDING', ?)",
+                             (user_id, plan['name'], plan['price'], today_str))
+                
+                # ۲. کسر وجه
                 conn.execute("UPDATE users SET balance = ?, total_spent = ?, user_level = ? WHERE user_id = ?", (new_balance, new_spent, lvl, user_id))
                 conn.commit()
-                bot.send_message(user_id, f"🎉 پرداخت انجام شد!\nاشتراک {plan['name']} صادر شد.\n💰 موجودی جدید: {new_balance:,} تومان")
+                
+                # ۳. اعلام به کاربر
+                bot.send_message(user_id, f"🎉 **پرداخت با موفقیت انجام شد!**\n\n🛒 سفارش شما برای اشتراک **{plan['name']}** با موفقیت ثبت شد.\n⏳ این پلن نیازمند تحویل دستی توسط مدیریت است. به محض اینکه ادمین لینک اشتراک شما را صادر کند، در همین چت برای شما ارسال خواهد شد.\n\n💰 موجودی جدید شما: {new_balance:,} تومان")
+                
+                # ۴. اطلاع‌رسانی به ادمین اصلی
+                try:
+                    bot.send_message(OWNER_ID, f"🛍️ **سفارش دستی جدید!**\n\n👤 کاربر: `{user_id}`\n📦 پلن خریده شده: {plan['name']}\n💰 قیمت: {plan['price']:,} تومان\n\n⚙️ جهت تحویل کانفیگ، به پنل مدیریت بخش «📥 سفارش‌ها تحویل دستی» بروید.")
+                except: pass
             else:
                 bot.answer_callback_query(call.id, "❌ موجودی کافی نیست! ابتدا حساب را شارژ کنید.", show_alert=True)
                 
@@ -324,6 +344,62 @@ def handle_all_callbacks(call):
             bot.edit_message_caption("❌ این رسید رد شد.", call.from_user.id, call.message.message_id)
             bot.send_message(trx['user_id'], "❌ رسید واریزی شما توسط مدیریت رد شد.")
             
+    # ✉️ هندلر دکمه ارسال کانفیگ توسط ادمین
+    elif data.startswith("ord_deliver_"):
+        order_id = int(data.replace("ord_deliver_", ""))
+        order = conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+        if order and order['status'] == 'PENDING':
+            msg = bot.send_message(user_id, f"🔗 لطفاً لینک کانفیگ یا ساب اشتراک را برای کاربر `{order['user_id']}` ارسال (پیست) کنید:")
+            bot.register_next_step_handler(msg, process_order_delivery, order_id)
+        else:
+            bot.answer_callback_query(call.id, "⚠️ این سفارش قبلاً تحویل داده شده است.")
+
+    # ❌ هندلر دکمه لغو سفارش و عودت وجه توسط ادمین
+    elif data.startswith("ord_cancel_"):
+        order_id = int(data.replace("ord_cancel_", ""))
+        order = conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+        if order and order['status'] == 'PENDING':
+            conn.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (order['price'], order['user_id']))
+            conn.execute("UPDATE orders SET status = 'CANCELLED' WHERE id = ?", (order_id,))
+            conn.commit()
+            bot.edit_message_text(f"❌ سفارش {order_id} لغو شد و مبلغ {order['price']:,} تومان به حساب کاربر برگشت داده شد.", call.from_user.id, call.message.message_id)
+            try:
+                bot.send_message(order['user_id'], f"❌ سفارش شما برای خرید {order['plan_name']} توسط مدیریت لغو شد و هزینه آن به کیف پول شما بازگشت داده شد.")
+            except: pass
+        else:
+            bot.answer_callback_query(call.id, "⚠️ این سفارش قبلاً لغو شده است.")
+            
+    conn.close()
+
+# --- تابع پردازش و تحویل لینک اشتراک به کاربر ---
+def process_order_delivery(message, order_id):
+    if not message.text:
+        bot.send_message(message.from_user.id, "❌ خطا! لطفاً لینک اشتراک را فقط به صورت متنی ارسال کنید.")
+        return
+    
+    config_link = message.text
+    conn = get_db_connection()
+    order = conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+    
+    if order and order['status'] == 'PENDING':
+        conn.execute("UPDATE orders SET status = 'COMPLETED' WHERE id = ?", (order_id,))
+        conn.commit()
+        
+        user_msg = (
+            f"🚀 **اشتراک شما آماده شد و تحویل داده شد!**\n\n"
+            f"📦 نوع پلن: {order['plan_name']}\n"
+            f"🔗 **لینک اشتراک اختصاصی شما:**\n\n"
+            f"`{config_link}`\n\n"
+            f"📌 لطفاً لینک بالا را کاملاً کپی کرده و در نرم‌افزار اتصال خود وارد کنید.\n"
+            f"🙏 از خرید و اعتماد شما سپاسگزاریم!"
+        )
+        try:
+            bot.send_message(order['user_id'], user_msg, parse_mode="Markdown")
+            bot.send_message(message.from_user.id, f"✅ کانفیگ با موفقیت برای کاربر `{order['user_id']}` ارسال و سفارش با موفقیت بسته شد.")
+        except Exception as e:
+            bot.send_message(message.from_user.id, f"❌ لینک در سیستم ثبت شد ولی به کاربر ارسال نشد (ربات را بلاک کرده). خطا: {e}")
+    else:
+        bot.send_message(message.from_user.id, "⚠️ این سفارش قبلاً تعیین تکلیف شده است.")
     conn.close()
 
 def process_payment_receipt(message):
@@ -449,12 +525,24 @@ def process_add_admin(message):
     except ValueError:
         bot.send_message(message.from_user.id, "❌ آیدی عددی نامعتبر است.")
 
+# ⚙️ بخش مدیریت سفارش‌ها (داینامیک و واقعی شد)
 @bot.message_handler(func=lambda m: is_admin(m.from_user.id))
 def handle_admin_features(message):
     t = message.text
     conn = get_db_connection()
+    
     if t == '📥 سفارش‌ها تحویل دستی':
-        bot.send_message(message.from_user.id, "📦 در حال حاضر سفارش تحویل دستی در صف وجود ندارد.")
+        orders = conn.execute("SELECT * FROM orders WHERE status = 'PENDING'").fetchall()
+        if not orders:
+            bot.send_message(message.from_user.id, "📦 در حال حاضر هیچ سفارش تحویل دستی در صف وجود ندارد.")
+        for ord in orders:
+            markup = types.InlineKeyboardMarkup()
+            markup.add(
+                types.InlineKeyboardButton("✉️ ارسال لینک و تحویل", callback_data=f"ord_deliver_{ord['id']}"),
+                types.InlineKeyboardButton("❌ لغو سفارش و عودت وجه", callback_data=f"ord_cancel_{ord['id']}")
+            )
+            bot.send_message(message.from_user.id, f"🛍️ **سفارش در انتظار تحویل**\n\n🆔 کد سفارش: {ord['id']}\n👤 کاربر: `{ord['user_id']}`\n📦 پلن: {ord['plan_name']}\n💵 مبلغ پرداختی: {ord['price']:,} تومان\n⏰ تاریخ: {ord['date']}", reply_markup=markup, parse_mode="Markdown")
+            
     elif t == '💳 رسید‌های در انتظار تایید':
         pending = conn.execute("SELECT * FROM transactions WHERE status = 'PENDING'").fetchall()
         if not pending:
@@ -463,14 +551,18 @@ def handle_admin_features(message):
             markup = types.InlineKeyboardMarkup()
             markup.add(types.InlineKeyboardButton("✅ تایید و شارژ", callback_data=f"trx_approve_{trx['id']}"), types.InlineKeyboardButton("❌ رد رسید", callback_data=f"trx_reject_{trx['id']}"))
             bot.send_photo(message.from_user.id, trx['photo_id'], caption=f"💰 درخواست شارژ\n👤 کاربر: {trx['user_id']}\n💵 مبلغ: {trx['amount']:,} تومان", reply_markup=markup)
+            
     elif t == '📊 گزارش دیتابیس‌ها':
         total_users = conn.execute("SELECT COUNT(*) as count FROM users").fetchone()['count']
         total_plans = conn.execute("SELECT COUNT(*) as count FROM plans").fetchone()['count']
-        bot.send_message(message.from_user.id, f"📊 آمار دیتابیس:\n\n👥 کل کاربران: {total_users} نفر\n📦 کل پلن‌های فعال: {total_plans} عدد")
+        total_orders = conn.execute("SELECT COUNT(*) as count FROM orders WHERE status='COMPLETED'").fetchone()['count']
+        bot.send_message(message.from_user.id, f"📊 آمار دیتابیس:\n\n👥 کل کاربران: {total_users} نفر\n📦 کل پلن‌های فعال: {total_plans} عدد\n✅ کل سفارشات تحویل داده شده: {total_orders} عدد")
+        
     elif t == '👥 کاربران فروشگاه':
         users = conn.execute("SELECT user_id FROM users LIMIT 10").fetchall()
         user_list = "\n".join([f"👤 `{u['user_id']}`" for u in users])
         bot.send_message(message.from_user.id, f"👥 لیست آخرین کاربران فعال:\n\n{user_list}", parse_mode="Markdown")
+        
     conn.close()
 
 # --- وب‌سرور هوشمند متصل به مینی‌اپ ---
